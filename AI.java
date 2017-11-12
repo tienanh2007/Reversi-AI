@@ -8,7 +8,7 @@ import edu.miami.cse.reversi.Square;
 import edu.miami.cse.reversi.Strategy;
 
 public class AI implements Strategy{
-	
+	private static final int EPSILON = 10;
 	@Override
 	public Square chooseSquare(Board board) {
 		float v = Integer.MIN_VALUE;
@@ -24,13 +24,15 @@ public class AI implements Strategy{
 	}
 	public float alphaBetaPrunning(Board board, int depth, float alpha, float beta, boolean max) {
 		if(depth == 0) {
-			Player p = board.getCurrentPlayer().opponent();
+			Player p = max ? board.getCurrentPlayer() : board.getCurrentPlayer().opponent();
+			int diff = board.getPlayerSquareCounts().get(p) - board.getPlayerSquareCounts().get(p.opponent());
+			int moveMade = board.getPlayerSquareCounts().get(p) + board.getPlayerSquareCounts().get(p.opponent());
 			int cornerSquare = 0;
 			if(board.getSquareOwners().get(new Square(0,  0)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(0,  7)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(7,  0)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(7,  7)) == p) cornerSquare++;
-			return board.getPlayerSquareCounts().get(p) * 0.01f + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
+			return (float)((max ? -diff : diff) * EPSILON * Math.pow(Math.E, -moveMade)) + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
 		}
 		
 		if(max) {
