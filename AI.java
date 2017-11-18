@@ -1,6 +1,7 @@
 package edu.miami.cse.reversi.strategy;
 
 import java.util.HashMap;
+import java.util.PriorityQueue;
 
 import edu.miami.cse.reversi.Board;
 import edu.miami.cse.reversi.Player;
@@ -8,7 +9,7 @@ import edu.miami.cse.reversi.Square;
 import edu.miami.cse.reversi.Strategy;
 
 public class AI implements Strategy{
-	private static final int EPSILON = 10;
+	private static final int EPSILON = 5;
 	@Override
 	public Square chooseSquare(Board board) {
 		float v = Integer.MIN_VALUE;
@@ -32,7 +33,11 @@ public class AI implements Strategy{
 			if(board.getSquareOwners().get(new Square(0,  7)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(7,  0)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(7,  7)) == p) cornerSquare++;
-			return (float)((max ? -diff : diff) * EPSILON * Math.pow(Math.E, -moveMade)) + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
+			if(board.getSquareOwners().get(new Square(0,  0)) == p.opponent()) cornerSquare--;
+			if(board.getSquareOwners().get(new Square(0,  7)) == p.opponent()) cornerSquare--;
+			if(board.getSquareOwners().get(new Square(7,  0)) == p.opponent()) cornerSquare--;
+			if(board.getSquareOwners().get(new Square(7,  7)) == p.opponent()) cornerSquare--;
+			return (float)(diff * EPSILON * (Math.pow(Math.E, -moveMade))) + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
 		}
 		
 		if(max) {
@@ -40,7 +45,6 @@ public class AI implements Strategy{
 			for(Square s:board.getCurrentPossibleSquares()) {
 				v = Math.max(v, alphaBetaPrunning(board.play(s), depth-1, alpha, beta, !max));
 				alpha = Math.max(alpha, v);
-				// need a ways to undo board.play(s)
 				if (beta <= alpha) break;
 			}
 			Player p = board.getCurrentPlayer();
@@ -51,10 +55,11 @@ public class AI implements Strategy{
 			return v;
 		} else {
 			float v = Integer.MAX_VALUE;
-			for(Square s:board.getCurrentPossibleSquares()) {
-				v = Math.min(v, alphaBetaPrunning(board.play(s), depth-1, alpha, beta, !max));
+			PriorityQueue<Board> heap = OrderHeuristic(board);
+			while(!heap.isEmpty()) {
+				v = Math.min(v, alphaBetaPrunning(heap.poll(), depth-1, alpha, beta, !max));
 				beta = Math.min(beta, v);
-				//need a ways to undo board.play(s)
+				if (beta <= alpha) break;
 			}
 			Player p = board.getCurrentPlayer();
 			if(board.isComplete()) {
@@ -64,4 +69,12 @@ public class AI implements Strategy{
 			return v;
 		}
  	}
+	
+	public PriorityQueue<Board> OrderHeuristic(Board board) {
+		PriorityQueue<Board> heap = new PriorityQueue<>((Board a, Board b) -> a.getCurrentPossibleSquares().size()-b.getCurrentPossibleSquares().size());
+		for(Square s:board.getCurrentPossibleSquares()) {
+			heap.add(board.play(s));
+		}
+		return heap;
+	}
 }
