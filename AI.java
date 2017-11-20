@@ -9,23 +9,29 @@ import edu.miami.cse.reversi.Square;
 import edu.miami.cse.reversi.Strategy;
 
 public class AI implements Strategy{
-	private static final int EPSILON = 5;
+	public static long time = 0, move = 0;
 	@Override
 	public Square chooseSquare(Board board) {
-		float v = Integer.MIN_VALUE;
+		double v = Double.MIN_VALUE;
 		Square best = board.getCurrentPossibleSquares().iterator().next();
+		long t = System.currentTimeMillis();
 		for(Square s:board.getCurrentPossibleSquares()) {
-			float a = alphaBetaPrunning(board.play(s), 2, Float.MIN_VALUE, Float.MAX_VALUE, false);
+			double a = alphaBetaPrunning(board.play(s), 3, Double.MIN_VALUE, Double.MAX_VALUE, board.getCurrentPlayer());
 			if(a > v) {
 				v = a;
 				best = s;
 			}
 		}
+		time += System.currentTimeMillis() - t;
+		move++;
 		return best;
 	}
-	public float alphaBetaPrunning(Board board, int depth, float alpha, float beta, boolean max) {
+	public double alphaBetaPrunning(Board board, int depth, double alpha, double beta, Player maxPlayer) {
+
 		if(depth == 0) {
-			Player p = max ? board.getCurrentPlayer() : board.getCurrentPlayer().opponent();
+			Player p = maxPlayer;
+			int diff = board.getPlayerSquareCounts().get(p) - board.getPlayerSquareCounts().get(p.opponent());
+			int moveMade = board.getPlayerSquareCounts().get(p) + board.getPlayerSquareCounts().get(p.opponent());
 			int cornerSquare = 0;
 			if(board.getSquareOwners().get(new Square(0,  0)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(0,  7)) == p) cornerSquare++;
@@ -35,44 +41,59 @@ public class AI implements Strategy{
 			if(board.getSquareOwners().get(new Square(0,  7)) == p.opponent()) cornerSquare--;
 			if(board.getSquareOwners().get(new Square(7,  0)) == p.opponent()) cornerSquare--;
 			if(board.getSquareOwners().get(new Square(7,  7)) == p.opponent()) cornerSquare--;
-			return board.getPlayerSquareCounts().get(p) * 0.01f + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
+			return (double)(diff * 5 * (Math.pow(Math.E, -moveMade))) + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
 		}
 		
-		if(max) {
-			float v = Integer.MIN_VALUE;
-			for(Square s:board.getCurrentPossibleSquares()) {
-				v = Math.max(v, alphaBetaPrunning(board.play(s), depth-1, alpha, beta, !max));
-				alpha = Math.max(alpha, v);
-				if (beta <= alpha) break;
+		if (board.getCurrentPlayer() == maxPlayer) {
+			// Maximizing Player
+			double value = Double.MIN_VALUE;
+			for (Square square : board.getCurrentPossibleSquares()) {
+				Board nextBoard = board.play(square);
+				value = Math.max(value, alphaBetaPrunning(nextBoard, depth - 1, alpha, beta, maxPlayer));
+				alpha = Math.max(alpha, value);
+				if (beta <= alpha) {
+					// Beta cutoff
+					break;
+				}
 			}
-			Player p = board.getCurrentPlayer();
-			if(board.isComplete()) {
-				if(board.getWinner() == p) return Integer.MAX_VALUE;
-				else return Integer.MIN_VALUE;
-			}
-			return v;
+
+			return value;
 		} else {
-			float v = Integer.MAX_VALUE;
-			PriorityQueue<Board> heap = OrderHeuristic(board);
-			while(!heap.isEmpty()) {
-				v = Math.min(v, alphaBetaPrunning(heap.poll(), depth-1, alpha, beta, !max));
-				beta = Math.min(beta, v);
-				if (beta <= alpha) break;
+			// Minimizing Player
+			double value = Double.MAX_VALUE;
+			for (Square square : board.getCurrentPossibleSquares()) {
+				Board nextBoard = board.play(square);
+				value = Math.min(value, alphaBetaPrunning(nextBoard, depth - 1, alpha, beta, maxPlayer));
+				beta = Math.min(beta, value);
+				if (beta <= alpha) {
+					// Alpha cutoff
+					break;
+				}
 			}
-			Player p = board.getCurrentPlayer();
-			if(board.isComplete()) {
-				if(board.getWinner() == p) return Integer.MAX_VALUE;
-				else return Integer.MIN_VALUE;
-			}
-			return v;
+
+			return value;
 		}
  	}
 	
 	public PriorityQueue<Board> OrderHeuristic(Board board) {
-		PriorityQueue<Board> heap = new PriorityQueue<>((Board a, Board b) -> a.getCurrentPossibleSquares().size()-b.getCurrentPossibleSquares().size());
+		PriorityQueue<Board> heap = new PriorityQueue<>((Board a, Board b) -> cornerPoint(a) - cornerPoint(b) + a.getCurrentPossibleSquares().size()-b.getCurrentPossibleSquares().size());
 		for(Square s:board.getCurrentPossibleSquares()) {
 			heap.add(board.play(s));
 		}
 		return heap;
+	}
+	
+	public int cornerPoint(Board board) {
+		Player p = board.getCurrentPlayer().opponent();
+		int cornerSquare = 0;
+		if(board.getSquareOwners().get(new Square(0,  0)) == p) cornerSquare++;
+		if(board.getSquareOwners().get(new Square(0,  7)) == p) cornerSquare++;
+		if(board.getSquareOwners().get(new Square(7,  0)) == p) cornerSquare++;
+		if(board.getSquareOwners().get(new Square(7,  7)) == p) cornerSquare++;
+		if(board.getSquareOwners().get(new Square(0,  0)) == p.opponent()) cornerSquare--;
+		if(board.getSquareOwners().get(new Square(0,  7)) == p.opponent()) cornerSquare--;
+		if(board.getSquareOwners().get(new Square(7,  0)) == p.opponent()) cornerSquare--;
+		if(board.getSquareOwners().get(new Square(7,  7)) == p.opponent()) cornerSquare--;
+		return cornerSquare*10;
 	}
 }
