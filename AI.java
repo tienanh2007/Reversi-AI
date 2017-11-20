@@ -15,7 +15,7 @@ public class AI implements Strategy{
 		float v = Integer.MIN_VALUE;
 		Square best = board.getCurrentPossibleSquares().iterator().next();
 		for(Square s:board.getCurrentPossibleSquares()) {
-			float a = alphaBetaPrunning(board.play(s), 3, Float.MIN_VALUE, Float.MAX_VALUE, false);
+			float a = alphaBetaPrunning(board.play(s), 2, Float.MIN_VALUE, Float.MAX_VALUE, false);
 			if(a > v) {
 				v = a;
 				best = s;
@@ -26,8 +26,6 @@ public class AI implements Strategy{
 	public float alphaBetaPrunning(Board board, int depth, float alpha, float beta, boolean max) {
 		if(depth == 0) {
 			Player p = max ? board.getCurrentPlayer() : board.getCurrentPlayer().opponent();
-			int diff = board.getPlayerSquareCounts().get(p) - board.getPlayerSquareCounts().get(p.opponent());
-			int moveMade = board.getPlayerSquareCounts().get(p) + board.getPlayerSquareCounts().get(p.opponent());
 			int cornerSquare = 0;
 			if(board.getSquareOwners().get(new Square(0,  0)) == p) cornerSquare++;
 			if(board.getSquareOwners().get(new Square(0,  7)) == p) cornerSquare++;
@@ -37,7 +35,7 @@ public class AI implements Strategy{
 			if(board.getSquareOwners().get(new Square(0,  7)) == p.opponent()) cornerSquare--;
 			if(board.getSquareOwners().get(new Square(7,  0)) == p.opponent()) cornerSquare--;
 			if(board.getSquareOwners().get(new Square(7,  7)) == p.opponent()) cornerSquare--;
-			return (float)(diff * EPSILON * (Math.pow(Math.E, -moveMade))) + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
+			return board.getPlayerSquareCounts().get(p) * 0.01f + board.getCurrentPossibleSquares().size() + cornerSquare * 10;
 		}
 		
 		if(max) {
